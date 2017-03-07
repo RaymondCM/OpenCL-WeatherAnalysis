@@ -13,6 +13,15 @@
 
 using namespace std;
 
+void print_help() {
+	std::cerr << "Application usage:" << std::endl;
+
+	std::cerr << "  -p : select platform " << std::endl;
+	std::cerr << "  -d : select device" << std::endl;
+	std::cerr << "  -l : list all platforms and devices" << std::endl;
+	std::cerr << "  -h : print this message" << std::endl;
+}
+
 template <typename T>
 ostream& operator<< (ostream& out, const vector<T>& v) {
 	if (!v.empty()) {
