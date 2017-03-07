@@ -15,11 +15,10 @@
 #include <CL/cl.hpp>
 #endif
 
-#include "Utils.h"
+#include "Utils.hpp"
 
-int main(int argc, char **argv) {
-
-	char * file_path = "../../ParallelComputing/Tutorial 3/temp_lincolnshire_short.txt";
+bool ParseFile(std::string file_path, std::vector<double>& dest) {
+	//Open input stream to file
 	std::ifstream input_file(file_path);
 
 	//Seek to the end of the file and get the position of the last char
@@ -40,7 +39,6 @@ int main(int argc, char **argv) {
 	long space_pos = 0;
 
 	//Final vector of values
-	std::vector <double> values;
 
 	for (long i = 0; i < size; ++i) {
 		char c = file_contents[i];
@@ -51,7 +49,7 @@ int main(int argc, char **argv) {
 		}
 		else if (c == '\n') {
 			int len = i - space_pos, index = 0;
-			
+
 			//Allocate buffer for word between space_pos and \n
 			char * word = new char[len];
 			word[len] = '\0';
@@ -62,9 +60,25 @@ int main(int argc, char **argv) {
 			}
 
 			//Parse word to double (higher precison)
-			values.push_back(strtod(word, NULL));
+			dest.push_back(strtod(word, NULL));
 		}
-	}
+	};
+
+	return true;
+};
+
+int main(int argc, char **argv) {
+
+	std::string file_path(".");
+
+	#ifdef PROJECT_ROOT
+	file_path = PROJECT_ROOT;
+	#endif
+
+	file_path += "/data/temp_lincolnshire.txt";
+
+	std::vector<double> temperature;
+	ParseFile(file_path, temperature);
 
 	return 0;
 }
