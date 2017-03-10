@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
 		root = PROJECT_ROOT;
 	#endif
 
-	std::string file_path = root + "/data/temp_lincolnshire_short.txt";
+	std::string file_path = root + "/data/temp_lincolnshire.txt";
 	std::string kernels_path = root + "/opencl/kernels.cl";
 
 	typedef int temptype;
@@ -123,7 +123,7 @@ int main(int argc, char **argv) {
 		//Create local and global size variables.
 		//Pad variables so that the input length is divisable by the workgroup size
 		//Use 9999 for neutral values as this is a tempreature value not present in the dataset
-		unsigned int local_size = 256;
+		unsigned int local_size = 1024;
 		cl::NDRange local_range(local_size);
 
 		unsigned int element_count = temperature.size();
@@ -156,7 +156,7 @@ int main(int argc, char **argv) {
 		queue.enqueueFillBuffer(output_buffer, 0, 0, elements_size);
 
 		//Configure kernels and queue them for execution
-		cl::Kernel kernel_1 = cl::Kernel(program, "MinimumAndMax");
+		cl::Kernel kernel_1 = cl::Kernel(program, "maximum");
 		kernel_1.setArg(0, temperature_buffer);
 		kernel_1.setArg(1, output_buffer);
 		//Allocate local memory with number of local elements * size
