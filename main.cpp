@@ -28,5 +28,7 @@ int main(int argc, char **argv) {
 	world.Max();
 	world.PrintResults();
 
+	char c;
+	std::cin >> c;
 	return 0;
 }
