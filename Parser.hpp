@@ -1,8 +1,8 @@
 namespace Parse {
 	template<typename T>
-	bool File(std::string file_path, std::vector<T>& dest) {
+	std::vector<T> File(std::string file_path) {
 		//Open input stream to file
-		std::ifstream input_file(file_path);
+		std::ifstream input_file(file_path, std::ios::in | std::ios::binary);
 
 		//Seek to the end of the file and get the position of the last char
 		input_file.seekg(0, std::ios_base::end);
@@ -22,6 +22,7 @@ namespace Parse {
 		long space_pos = 0;
 
 		//Final vector of values
+		std::vector<T> dest;
 
 		for (long i = 0; i < size; ++i) {
 			char c = file_contents[i];
@@ -47,7 +48,7 @@ namespace Parse {
 			}
 		};
 
-		return true;
+		return dest;
 	};
 
 }
