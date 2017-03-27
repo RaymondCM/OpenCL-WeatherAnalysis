@@ -1,3 +1,5 @@
+#include <fstream>
+
 namespace Parse {
 	template<typename T>
 	std::vector<T> File(std::string file_path) {
@@ -30,8 +32,7 @@ namespace Parse {
 			if (c == ' ') {
 				//+1 to i to itterate after last space
 				space_pos = i + 1;
-			}
-			else if (c == '\n') {
+			} else if (c == '\n') {
 				int len = i - space_pos, index = 0;
 
 				//Allocate buffer for word between space_pos and \n

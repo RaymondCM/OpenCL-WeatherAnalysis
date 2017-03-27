@@ -14,7 +14,7 @@ MESSAGE( STATUS "OpenCL_INCLUDE_DIR: " ${OpenCL_INCLUDE_DIR})
 MESSAGE( STATUS "OpenCL_LIBRARIES: " ${OpenCL_LIBRARIES})
 
 #Add all source files
-add_executable(AssignmentOne "main.cpp" "WeatherAnalysis.hpp" "WeatherAnalysis.tpp" "Utils.hpp" "Parser.hpp")
+add_executable(AssignmentOne "main.cpp" "WeatherAnalysis.hpp" "WeatherAnalysis.cpp" "Utils.hpp" "Parser.hpp")
 
 #Include target specific include directories
 target_include_directories(AssignmentOne PUBLIC ${OpenCL_INCLUDE_DIR})
