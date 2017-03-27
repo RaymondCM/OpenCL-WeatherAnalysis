@@ -18,14 +18,16 @@ int main(int argc, char **argv) {
 	typedef int data_type;
 	std::vector<data_type> data = Parse::File<data_type>(file_path);
 
-	WeatherAnalysis<data_type> world(data);
+    WeatherAnalysis world(data);
 	world.CmdParser(argc, argv);
 	world.Initialise(kernels_path);
-	world.Configure(1024, 0);
+    world.Configure(512, 0);
 	world.PadData();
 	world.WriteDataToDevice();
 	world.Min();
 	world.Max();
+    world.Average();
+    world.StdDeviation();
 	world.PrintResults();
 
 	char c;
