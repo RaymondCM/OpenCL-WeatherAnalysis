@@ -1,3 +1,5 @@
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "TemplateArgumentsIssues"
 #ifndef _UTILS_H_
 #define _UTILS_H_
 
@@ -22,6 +24,68 @@ void print_help() {
 	std::cerr << "  -l : list all platforms and devices" << std::endl;
 	std::cerr << "  -h : print this message" << std::endl;
 }
+
+void PrintPreferredWorkGroupSize(cl::Context& context, const cl::Kernel& k, unsigned int data_size, unsigned int local_size) {
+	cl::Device device = context.getInfo<CL_CONTEXT_DEVICES>()[0];
+	size_t preferred = k.getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(device);
+	size_t max_work_group_size = k.getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(device);
+
+	std::cout << "Preferred Kernel Options: " << "\n\t";
+	std::cout << "Preferred Work Group Size: " << preferred << "\n\t";
+	std::cout << "Max Work Group Size: " << max_work_group_size << "\n\t";
+	std::cout << "Global Size: " << data_size << "\n\t";
+	std::cout << "Local Size: " << local_size << '\n' << std::endl;
+}
+
+unsigned int GetPreferredWorkGroupSize(cl::Context& context, const cl::Kernel& k) {
+	cl::Device device = context.getInfo<CL_CONTEXT_DEVICES>()[0];
+	return k.getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(device);
+}
+
+void PrintBuildErrors(cl::Context& context, cl::Program& program){
+	std::cerr << "Build Status: "
+			  << program.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(context.getInfo<CL_CONTEXT_DEVICES>()[0])
+			  << '\n';
+	std::cerr << "Build Options:\t" << program.getBuildInfo<CL_PROGRAM_BUILD_OPTIONS>(
+			context.getInfo<CL_CONTEXT_DEVICES>()[0]) << '\n';
+	std::cerr << "Build Log:\t "
+			  << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(context.getInfo<CL_CONTEXT_DEVICES>()[0])
+			  << std::endl;
+}
+
+
+enum ProfilingResolution {
+	PROF_NS = 1,
+	PROF_US = 1000,
+	PROF_MS = 1000000,
+	PROF_S = 1000000000
+};
+
+string GetFullProfilingInfo(const cl::Event& evnt, ProfilingResolution resolution) {
+	stringstream sstream;
+
+	sstream << "Queued: " << (evnt.getProfilingInfo<CL_PROFILING_COMMAND_SUBMIT>() - evnt.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>()) / resolution;
+	sstream << "\n\tSubmitted: " << (evnt.getProfilingInfo<CL_PROFILING_COMMAND_START>() - evnt.getProfilingInfo<CL_PROFILING_COMMAND_SUBMIT>()) / resolution;
+	sstream << "\n\tExecuted: " << (evnt.getProfilingInfo<CL_PROFILING_COMMAND_END>() - evnt.getProfilingInfo<CL_PROFILING_COMMAND_START>()) / resolution;
+	sstream << "\n\tTotal: " << (evnt.getProfilingInfo<CL_PROFILING_COMMAND_END>() - evnt.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>()) / resolution;
+
+	switch (resolution) {
+		case PROF_NS: sstream << "ns"; break;
+		case PROF_US: sstream << "us"; break;
+		case PROF_MS: sstream << "ms"; break;
+		case PROF_S: sstream << "s"; break;
+		default: break;
+	}
+
+	return sstream.str();
+}
+
+void ProfilingInfo(cl::Event& prof_event) {
+	std::cout << "Execution time: "
+			  << prof_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() -
+				 prof_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << "ns" << "\n\t"
+			  << GetFullProfilingInfo(prof_event, ProfilingResolution::PROF_US) << '\n' << std::endl;
+};
 
 template <typename T>
 ostream& operator<< (ostream& out, const vector<T>& v) {
@@ -207,30 +271,6 @@ cl::Context GetContext(int platform_id, int device_id) {
 	return cl::Context();
 }
 
-enum ProfilingResolution {
-	PROF_NS = 1,
-	PROF_US = 1000,
-	PROF_MS = 1000000,
-	PROF_S = 1000000000
-};
-
-string GetFullProfilingInfo(const cl::Event& evnt, ProfilingResolution resolution) {
-	stringstream sstream;
-
-	sstream << "Queued " << (evnt.getProfilingInfo<CL_PROFILING_COMMAND_SUBMIT>() - evnt.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>()) / resolution;
-	sstream << ", Submitted " << (evnt.getProfilingInfo<CL_PROFILING_COMMAND_START>() - evnt.getProfilingInfo<CL_PROFILING_COMMAND_SUBMIT>()) / resolution;
-	sstream << ", Executed " << (evnt.getProfilingInfo<CL_PROFILING_COMMAND_END>() - evnt.getProfilingInfo<CL_PROFILING_COMMAND_START>()) / resolution;
-	sstream << ", Total " << (evnt.getProfilingInfo<CL_PROFILING_COMMAND_END>() - evnt.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>()) / resolution;
-
-	switch (resolution) {
-	case PROF_NS: sstream << " [ns]"; break;
-	case PROF_US: sstream << " [us]"; break;
-	case PROF_MS: sstream << " [ms]"; break;
-	case PROF_S: sstream << " [s]"; break;
-	default: break;
-	}
-
-	return sstream.str();
-}
 
 #endif
+#pragma clang diagnostic pop
