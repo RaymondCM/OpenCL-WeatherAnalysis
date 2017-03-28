@@ -5,6 +5,8 @@
 #define __CL_ENABLE_EXCEPTIONS
 
 #include <vector>
+#include <string>
+#include "SimpleTimer.hpp"
 
 #ifdef __APPLE__
 #include <OpenCL/cl.hpp>
@@ -12,39 +14,48 @@
 #include <CL/cl.hpp>
 #endif
 
+template<class T>
 class WeatherAnalysis {
 public:
-    WeatherAnalysis(std::vector<int> &);
+    WeatherAnalysis(std::vector<T> &);
 	void CmdParser(int&, char**&);
 	void Initialise(const std::string);
 	void Build();
-	void Configure(int = 1024, int = 0);
-	void PadData(int = 0);
+	void Configure(int = 1024, T = 0);
+	void PadData(T = 0, bool = true);
 	void WriteDataToDevice();
-	void EnqueueKernel(cl::Kernel);
 	void PrintResults();
 	void PrintQueueOptions(const cl::Kernel&);
+	void SetVerboseKernel(bool = true);
+    void UsePreferredKernelOptions(bool = true);
+    void PrintKernelProfilingData(bool = true);
+    void PrintBaselineResults();
 	void Min(); 
 	void Max();
-
     void Sum();
-
     void Average();
-
     void StdDeviation();
 private:
 	int platform_ID = 0, device_ID = 0;
-	int local_size = 1024, neutral_value = 0;
+	int local_size = 1024;
+	T neutral_value = 0, minimum = 0, maximum = 0, sum = 0;
+	float average = 0, std_deviation = 0;
     unsigned int pad_right = 0;
-    int minimum = 0, maximum = 0, sum = 0;
-    float average = 0, std_deviation = 0;
+	bool verbose = false, use_preferred = false, print_profiling_data = false;
 	cl::NDRange local_range, global_range;
-    std::vector<int> data;
+    cl::Event prof_event;
+    std::vector<T> data;
 	cl::Context context;
 	cl::CommandQueue queue;
 	cl::Program program;
 	cl::Program::Sources sources;
     cl::Buffer data_buffer, min_buffer, max_buffer, sum_buffer, std_buffer;
+	std::string type = "";
+    SimpleTimer timer;
+
+	void TypeCheck();
+    void PrintProfilingData(const std::string &kernel_ID);
+    void EnqueueKernel(cl::Kernel &k, const std::string &kernel_ID);
 };
 
 #endif
