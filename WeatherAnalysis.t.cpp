@@ -130,7 +130,8 @@ void WeatherAnalysis<T>::SetVerboseKernel(bool verbose) {
 
 template<class T>
 void WeatherAnalysis<T>::PrintBaselineResults() {
-    T smin = this->data[0], smax = 0, ssum = 0, savg = 0, sstd = 0;
+    T smin = this->data[0], smax = 0, ssum = 0;
+    float savg = 0, sstd = 0;
 
     for (auto val : this->data) {
         if (val < smin)
@@ -287,14 +288,13 @@ void WeatherAnalysis<T>::StdDeviation() {
 
     this->EnqueueKernel(std_kernel, kernel_ID);
 
-    //Create vector to read final values to
+    //Create vector to read final values
     std::vector<T> output(this->data.size(), 0);
 
     //5.3 Copy the result from device to host
     this->queue.enqueueReadBuffer(this->std_buffer, CL_TRUE, 0, sizeof(T), &output[0]);
 
-    this->std_deviation = output.at(0);
-    std::cout << std::endl;
+    this->std_deviation = this->type == "INT" ? sqrt(output.at(0)/(this->data.size() - this->pad_right)) : output.at(0);
 };
 
 template<class T>

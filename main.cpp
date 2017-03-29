@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
 
     world.Configure(32, 0);
     world.SetVerboseKernel(true);
-    world.UsePreferredKernelOptions(true);
+    world.UsePreferredKernelOptions(false);
     world.PrintKernelProfilingData(true);
 
 	world.PadData();
