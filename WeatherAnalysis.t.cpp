@@ -75,7 +75,7 @@ void WeatherAnalysis<T>::PadData(T neutral_value, bool print) {
 
     if (pad_count > 0) {
         this->pad_right = pad_count;
-        std::vector<int> neutrals(this->local_size - this->pad_right, this->neutral_value);
+        std::vector<T> neutrals(this->local_size - this->pad_right, this->neutral_value);
         this->data.insert(this->data.end(), neutrals.begin(), neutrals.end());
         this->global_range = cl::NDRange(this->data.size());
         if (print)
@@ -137,7 +137,6 @@ void WeatherAnalysis<T>::PrintBaselineResults() {
             smin = val;
         else if (val > smax)
             smax = val;
-
         ssum += val;
     }
 
@@ -205,15 +204,15 @@ void WeatherAnalysis<T>::Min() {
 
     //Configure kernels and queue them for execution
     //Allocate local memory with number of local elements * size
-    cl::Kernel max_kernel = cl::Kernel(program, kernel_ID.c_str());
-    max_kernel.setArg(0, this->data_buffer);
-    max_kernel.setArg(1, this->min_buffer);
-    max_kernel.setArg(2, cl::Local(this->local_size * sizeof(T)));
+    cl::Kernel min_kernel = cl::Kernel(program, kernel_ID.c_str());
+    min_kernel.setArg(0, this->data_buffer);
+    min_kernel.setArg(1, this->min_buffer);
+    min_kernel.setArg(2, cl::Local(this->local_size * sizeof(T)));
 
-    this->EnqueueKernel(max_kernel, kernel_ID);
+    this->EnqueueKernel(min_kernel, kernel_ID);
 
     //Create vector to read final values to
-    std::vector<int> output(this->data.size(), 0);
+    std::vector<T> output(this->data.size(), 0);
 
     //5.3 Copy the result from device to host
     this->queue.enqueueReadBuffer(this->min_buffer, CL_TRUE, 0, sizeof(T), &output[0]);
@@ -235,7 +234,7 @@ void WeatherAnalysis<T>::Max() {
     this->EnqueueKernel(max_kernel, kernel_ID);
 
     //Create vector to read final values to
-    std::vector<int> output(this->data.size(), 0);
+    std::vector<T> output(this->data.size(), 0);
 
     //5.3 Copy the result from device to host
     this->queue.enqueueReadBuffer(this->max_buffer, CL_TRUE, 0, sizeof(T), &output[0]);
@@ -245,7 +244,8 @@ void WeatherAnalysis<T>::Max() {
 
 template<class T>
 void WeatherAnalysis<T>::Average() {
-    this->Sum();
+    if(this->sum == 0)
+        this->Sum();
     this->average = (float) this->sum / (float) (this->data.size() - this->pad_right);
 };
 
@@ -280,7 +280,7 @@ void WeatherAnalysis<T>::StdDeviation() {
     cl::Kernel std_kernel = cl::Kernel(this->program, kernel_ID.c_str());
     std_kernel.setArg(0, this->data_buffer);
     std_kernel.setArg(1, this->std_buffer);
-    std_kernel.setArg(2, (int) this->average);
+    std_kernel.setArg(2, this->average);
 
     //Allocate local memory with number of local elements * size
     std_kernel.setArg(3, cl::Local(this->local_size * sizeof(T)));
@@ -293,7 +293,8 @@ void WeatherAnalysis<T>::StdDeviation() {
     //5.3 Copy the result from device to host
     this->queue.enqueueReadBuffer(this->std_buffer, CL_TRUE, 0, sizeof(T), &output[0]);
 
-    this->std_deviation = sqrt((float) output.at(0) / (this->data.size() - this->pad_right));
+    this->std_deviation = output.at(0);
+    std::cout << std::endl;
 };
 
 template<class T>
