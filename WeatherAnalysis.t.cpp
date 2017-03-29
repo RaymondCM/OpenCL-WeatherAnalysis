@@ -108,7 +108,7 @@ void WeatherAnalysis<T>::PrintProfilingData(const std::string &kernel_ID) {
 };
 
 template<class T>
-void WeatherAnalysis<T>::PrintKernelProfilingData(bool print_data){
+void WeatherAnalysis<T>::PrintKernelProfilingData(bool print_data) {
     this->print_profiling_data = print_data;
 };
 
@@ -126,6 +126,15 @@ void WeatherAnalysis<T>::UsePreferredKernelOptions(bool use_pref) {
 template<class T>
 void WeatherAnalysis<T>::SetVerboseKernel(bool verbose) {
     this->verbose = verbose;
+};
+
+template<class T>
+void WeatherAnalysis<T>::SetKernelWorkGroupRecursion(bool should_recurse) {
+    if (this->type == "FLOAT") {
+        this->kernel_work_group_recursion = should_recurse;
+    } else {
+        std::cout << "No supported kernels for workgroup recursion for type " << this->type << std::endl;
+    }
 };
 
 template<class T>
@@ -163,28 +172,56 @@ void WeatherAnalysis<T>::PrintBaselineResults() {
 template<class T>
 void WeatherAnalysis<T>::WriteDataToDevice() {
     unsigned int data_size = this->data.size() * sizeof(T);
+    unsigned int work_group_size = (this->data.size() / this->local_size) * sizeof(T);
 
     //Allocate device buffers
     this->data_buffer = cl::Buffer(this->context, CL_MEM_READ_ONLY, data_size);
-    this->min_buffer = cl::Buffer(this->context, CL_MEM_READ_WRITE, data_size);
-    this->max_buffer = cl::Buffer(this->context, CL_MEM_READ_WRITE, data_size);
-    this->sum_buffer = cl::Buffer(this->context, CL_MEM_READ_WRITE, data_size);
-    this->std_buffer = cl::Buffer(this->context, CL_MEM_READ_WRITE, data_size);
-    this->sort_buffer = cl::Buffer(this->context, CL_MEM_READ_WRITE, data_size);
-
     //Copy data_buffer data to device
     this->queue.enqueueWriteBuffer(this->data_buffer, CL_TRUE, 0, data_size, &this->data[0]);
 
+    //Allocate device buffers
+    this->min_buffer = cl::Buffer(this->context, CL_MEM_READ_WRITE, work_group_size);
+    this->max_buffer = cl::Buffer(this->context, CL_MEM_READ_WRITE, work_group_size);
+    this->sum_buffer = cl::Buffer(this->context, CL_MEM_READ_WRITE, work_group_size);
+    this->std_buffer = cl::Buffer(this->context, CL_MEM_READ_WRITE, work_group_size);
+    this->sort_buffer = cl::Buffer(this->context, CL_MEM_READ_WRITE, data_size);
+
     //Copy output buffer to device with all zeros
-    this->queue.enqueueFillBuffer(this->min_buffer, 0, 0, data_size);
-    this->queue.enqueueFillBuffer(this->max_buffer, 0, 0, data_size);
-    this->queue.enqueueFillBuffer(this->sum_buffer, 0, 0, data_size);
-    this->queue.enqueueFillBuffer(this->std_buffer, 0, 0, data_size);
+    this->queue.enqueueFillBuffer(this->min_buffer, 0, 0, work_group_size);
+    this->queue.enqueueFillBuffer(this->max_buffer, 0, 0, work_group_size);
+    this->queue.enqueueFillBuffer(this->sum_buffer, 0, 0, work_group_size);
+    this->queue.enqueueFillBuffer(this->std_buffer, 0, 0, work_group_size);
     this->queue.enqueueFillBuffer(this->sort_buffer, 0, 0, data_size);
 };
 
 template<class T>
-void WeatherAnalysis<T>::EnqueueKernel(cl::Kernel &k, const std::string& kernel_ID) {
+void WeatherAnalysis<T>::EnqueueKernel(cl::Kernel &k, const std::string &ID) {
+    this->EnqueueNDRangeKernel(k, ID);
+}
+
+template<class T>
+void WeatherAnalysis<T>::EnqueueKernel(cl::Kernel &k, const std::string &ID, cl::Buffer &out_buffer, int in_index) {
+    if (this->kernel_work_group_recursion) {
+        std::cout << "Calling '" << ID << "' recursively until work group output reduced to one element\n" << std::endl;
+        int work_group_count = this->data.size() / this->local_size;
+        bool swapped = false;
+        while (work_group_count > this->local_size) {
+            this->EnqueueNDRangeKernel(k, ID);
+
+            if (swapped) {
+                work_group_count /= this->local_size;
+            } else {
+                k.setArg(in_index, out_buffer);
+                swapped = true;
+            }
+        }
+    }
+
+    this->EnqueueNDRangeKernel(k, ID);
+}
+
+template<class T>
+void WeatherAnalysis<T>::EnqueueNDRangeKernel(cl::Kernel &k, const std::string &kernel_ID) {
     if (this->use_preferred) {
         this->Configure(GetPreferredWorkGroupSize(this->context, k), this->neutral_value);
         this->PadData(this->neutral_value, false);
@@ -197,13 +234,18 @@ void WeatherAnalysis<T>::EnqueueKernel(cl::Kernel &k, const std::string& kernel_
     //Queue and execute kernel
     this->queue.enqueueNDRangeKernel(k, cl::NullRange, this->global_range, this->local_range, NULL, &this->prof_event);
 
-    if(this->print_profiling_data)
+    if (this->print_profiling_data)
         this->PrintProfilingData(kernel_ID);
 };
 
 template<class T>
+std::string WeatherAnalysis<T>::GetKernelName(std::string s, bool can_reduce) {
+    return s + (can_reduce && this->kernel_work_group_recursion ? "_WG_REDUCE_" : "_") + this->type;
+}
+
+template<class T>
 void WeatherAnalysis<T>::Min() {
-    std::string kernel_ID("min_" + this->type);
+    std::string kernel_ID(this->GetKernelName("min"));
 
     //Configure kernels and queue them for execution
     //Allocate local memory with number of local elements * size
@@ -212,7 +254,7 @@ void WeatherAnalysis<T>::Min() {
     min_kernel.setArg(1, this->min_buffer);
     min_kernel.setArg(2, cl::Local(this->local_size * sizeof(T)));
 
-    this->EnqueueKernel(min_kernel, kernel_ID);
+    this->EnqueueKernel(min_kernel, kernel_ID, this->min_buffer);
 
     //Create vector to read final values to
     std::vector<T> output(this->data.size(), 0);
@@ -225,7 +267,7 @@ void WeatherAnalysis<T>::Min() {
 
 template<class T>
 void WeatherAnalysis<T>::Max() {
-    std::string kernel_ID("max_" + this->type);
+    std::string kernel_ID(this->GetKernelName("max"));
 
     //Configure kernels and queue them for execution
     //Allocate local memory with number of local elements * size
@@ -234,7 +276,7 @@ void WeatherAnalysis<T>::Max() {
     max_kernel.setArg(1, this->max_buffer);
     max_kernel.setArg(2, cl::Local(this->local_size * sizeof(T)));
 
-    this->EnqueueKernel(max_kernel, kernel_ID);
+    this->EnqueueKernel(max_kernel, kernel_ID, this->max_buffer);
 
     //Create vector to read final values to
     std::vector<T> output(this->data.size(), 0);
@@ -247,14 +289,14 @@ void WeatherAnalysis<T>::Max() {
 
 template<class T>
 void WeatherAnalysis<T>::Average() {
-    if(this->sum == 0)
+    if (this->sum == 0)
         this->Sum();
     this->average = (float) this->sum / (float) (this->data.size() - this->pad_right);
 };
 
 template<class T>
 void WeatherAnalysis<T>::Sum() {
-    std::string kernel_ID("sum_" + this->type);
+    std::string kernel_ID(this->GetKernelName("sum"));
 
     //Configure kernels and queue them for execution
     cl::Kernel sum_kernel = cl::Kernel(program, kernel_ID.c_str());
@@ -264,7 +306,7 @@ void WeatherAnalysis<T>::Sum() {
     //Allocate local memory with number of local elements * size
     sum_kernel.setArg(2, cl::Local(this->local_size * sizeof(T)));
 
-    this->EnqueueKernel(sum_kernel, kernel_ID);
+    this->EnqueueKernel(sum_kernel, kernel_ID, this->sum_buffer);
 
     //Create vector to read final values to
     std::vector<T> output(this->data.size(), 0);
@@ -277,7 +319,7 @@ void WeatherAnalysis<T>::Sum() {
 
 template<class T>
 void WeatherAnalysis<T>::StdDeviation() {
-    std::string kernel_ID("std_" + this->type);
+    std::string kernel_ID(this->GetKernelName("std", false));
 
     //Configure kernels and queue them for execution
     cl::Kernel std_kernel = cl::Kernel(this->program, kernel_ID.c_str());
@@ -295,13 +337,12 @@ void WeatherAnalysis<T>::StdDeviation() {
 
     //5.3 Copy the result from device to host
     this->queue.enqueueReadBuffer(this->std_buffer, CL_TRUE, 0, sizeof(T), &output[0]);
-
-    this->std_deviation = this->type == "INT" ? sqrt(output.at(0)/(this->data.size() - this->pad_right)) : output.at(0);
+    this->std_deviation = this->type == "INT" ? sqrt((float)output.at(0) / (float)(this->data.size() - this->pad_right)) : output.at(0);
 };
 
 template<class T>
 void WeatherAnalysis<T>::Sort() {
-    std::string kernel_ID("sort_" + this->type);
+    std::string kernel_ID(this->GetKernelName("sort"), false);
 
     //Configure kernels and queue them for execution
     cl::Kernel sort_kernel = cl::Kernel(this->program, kernel_ID.c_str());
@@ -309,7 +350,7 @@ void WeatherAnalysis<T>::Sort() {
     sort_kernel.setArg(1, this->sort_buffer);
 
     //Allocate local memory with number of local elements * size
-    //sort_kernel.setArg(2, cl::Local(this->local_size * sizeof(T)));
+    sort_kernel.setArg(2, cl::Local(this->local_size * sizeof(T)));
 
     this->EnqueueKernel(sort_kernel, kernel_ID);
 
@@ -317,9 +358,11 @@ void WeatherAnalysis<T>::Sort() {
     std::vector<T> output(this->data.size(), 0);
 
     //5.3 Copy the result from device to host
-    this->queue.enqueueReadBuffer(this->sort_buffer, CL_TRUE, 0, sizeof(T), &output[0]);
+    this->queue.enqueueReadBuffer(this->sort_buffer, CL_TRUE, 0, this->data.size() * sizeof(T), &output[0]);
 
     this->sorted_data = output;
+    this->data = this->sorted_data;
+    PrintNonZeros(this->sorted_data);
     std::cout << this->sorted_data.at(0);
 };
 
