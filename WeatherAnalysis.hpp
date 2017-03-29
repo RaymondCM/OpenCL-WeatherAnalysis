@@ -35,6 +35,7 @@ public:
     void Sum();
     void Average();
     void StdDeviation();
+    void Sort();
 private:
 	int platform_ID = 0, device_ID = 0;
 	int local_size = 1024;
@@ -44,12 +45,12 @@ private:
 	bool verbose = false, use_preferred = false, print_profiling_data = false;
 	cl::NDRange local_range, global_range;
     cl::Event prof_event;
-    std::vector<T> data;
+    std::vector<T> data, sorted_data;
 	cl::Context context;
 	cl::CommandQueue queue;
 	cl::Program program;
 	cl::Program::Sources sources;
-    cl::Buffer data_buffer, min_buffer, max_buffer, sum_buffer, std_buffer;
+    cl::Buffer data_buffer, min_buffer, max_buffer, sum_buffer, std_buffer, sort_buffer;
 	std::string type = "";
     SimpleTimer timer;
 

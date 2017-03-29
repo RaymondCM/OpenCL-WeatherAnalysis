@@ -170,6 +170,7 @@ void WeatherAnalysis<T>::WriteDataToDevice() {
     this->max_buffer = cl::Buffer(this->context, CL_MEM_READ_WRITE, data_size);
     this->sum_buffer = cl::Buffer(this->context, CL_MEM_READ_WRITE, data_size);
     this->std_buffer = cl::Buffer(this->context, CL_MEM_READ_WRITE, data_size);
+    this->sort_buffer = cl::Buffer(this->context, CL_MEM_READ_WRITE, data_size);
 
     //Copy data_buffer data to device
     this->queue.enqueueWriteBuffer(this->data_buffer, CL_TRUE, 0, data_size, &this->data[0]);
@@ -179,6 +180,7 @@ void WeatherAnalysis<T>::WriteDataToDevice() {
     this->queue.enqueueFillBuffer(this->max_buffer, 0, 0, data_size);
     this->queue.enqueueFillBuffer(this->sum_buffer, 0, 0, data_size);
     this->queue.enqueueFillBuffer(this->std_buffer, 0, 0, data_size);
+    this->queue.enqueueFillBuffer(this->sort_buffer, 0, 0, data_size);
 };
 
 template<class T>
@@ -295,6 +297,30 @@ void WeatherAnalysis<T>::StdDeviation() {
     this->queue.enqueueReadBuffer(this->std_buffer, CL_TRUE, 0, sizeof(T), &output[0]);
 
     this->std_deviation = this->type == "INT" ? sqrt(output.at(0)/(this->data.size() - this->pad_right)) : output.at(0);
+};
+
+template<class T>
+void WeatherAnalysis<T>::Sort() {
+    std::string kernel_ID("sort_" + this->type);
+
+    //Configure kernels and queue them for execution
+    cl::Kernel sort_kernel = cl::Kernel(this->program, kernel_ID.c_str());
+    sort_kernel.setArg(0, this->data_buffer);
+    sort_kernel.setArg(1, this->sort_buffer);
+
+    //Allocate local memory with number of local elements * size
+    //sort_kernel.setArg(2, cl::Local(this->local_size * sizeof(T)));
+
+    this->EnqueueKernel(sort_kernel, kernel_ID);
+
+    //Create vector to read final values
+    std::vector<T> output(this->data.size(), 0);
+
+    //5.3 Copy the result from device to host
+    this->queue.enqueueReadBuffer(this->sort_buffer, CL_TRUE, 0, sizeof(T), &output[0]);
+
+    this->sorted_data = output;
+    std::cout << this->sorted_data.at(0);
 };
 
 template<class T>

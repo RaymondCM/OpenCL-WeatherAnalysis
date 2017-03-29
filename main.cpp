@@ -12,10 +12,10 @@ int main(int argc, char **argv) {
 		root = PROJECT_ROOT;
 	#endif
 
-	std::string file_path = root + "/data/temp_lincolnshire.txt";
+	std::string file_path = root + "/data/temp_lincolnshire_short.txt";
 	std::string kernels_path = root + "/opencl/kernels.cl";
 
-	typedef float T;
+	typedef int T;
 	std::vector<T> data = Parse::File<T>(file_path);
     std::cout << "Size: " << data.size() << ", Last: " << data.back() << '\n' << std::endl;
 
@@ -26,16 +26,13 @@ int main(int argc, char **argv) {
     world.Configure(32, 0);
     world.SetVerboseKernel(true);
     world.UsePreferredKernelOptions(false);
-    world.PrintKernelProfilingData(true);
+    world.PrintKernelProfilingData(false);
 
 	world.PadData();
     world.PrintBaselineResults();
     world.WriteDataToDevice();
 
-    world.Min();
-    world.Max();
-    world.Average();
-    world.StdDeviation();
+    world.Sort();
 
     world.PrintResults();
 
