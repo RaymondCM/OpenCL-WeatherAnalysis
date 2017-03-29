@@ -16,6 +16,15 @@
 
 using namespace std;
 
+template<typename T>
+void PrintNonZeros(std::vector<T>& v){
+	for(auto const& val : v) {
+		if(val != 0)
+			std::cout << val << ", ";
+	}
+	std::cout << std::endl;
+}
+
 void print_help() {
 	std::cerr << "Application usage:" << std::endl;
 
