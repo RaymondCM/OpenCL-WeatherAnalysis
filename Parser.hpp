@@ -28,7 +28,6 @@ namespace Parse {
 
 		//Close the file
 		input_file.close();
-		int c = 0;
 		for (unsigned int i = 0; i < size; ++i) {
 			if (file_contents[i] == '\n') {
 				char word[7] = {"     \0"};
@@ -37,7 +36,6 @@ namespace Parse {
 				while(file_contents[j] != ' ')
 					*(word + counter--) = file_contents[j--];
 
-				c++;
 				Parse::NumericData(word, destination);
 			}
 		};
