@@ -25,6 +25,15 @@ void PrintNonZeros(std::vector<T>& v){
 	std::cout << std::endl;
 }
 
+template<typename T>
+void PrintVal(std::vector<T>& v, int i){
+	for(auto const& val : v) {
+		if(val == i)
+			std::cout << val << ", ";
+	}
+	std::cout << std::endl;
+}
+
 void print_help() {
 	std::cerr << "Application usage:" << std::endl;
 
