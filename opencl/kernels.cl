@@ -191,31 +191,62 @@ inline float square_flt(float a) {
     return a * a;
 }
 
-__kernel void std_INT(__global const int *A, __global int *B, float meanf) {
-    //Get ID, local ID and width of local work group
+__kernel void std_INT(__global const int *A, __global int *B, float mean_f, __local int *local_std) {
+    //Get ID, local ID and width of local workgroup
     int id = get_global_id(0);
+    int lid = get_local_id(0);
     int N = get_local_size(0);
-    int mean = meanf;
-    B[id] = square_int(A[id] - mean);
+    int mean = (int) mean_f;
 
+    local_std[lid] = square_int(A[id] - mean);
     barrier(CLK_LOCAL_MEM_FENCE);
 
-    if(id % N == 0){
-        for(int i = 1; i < N; ++i){
-            B[id] += B[id+i];
-        }
+    for (int i = 1; i < N; i *= 2) {
+        if (lid % (i * 2) == 0 && lid + i < N)
+            local_std[lid] += local_std[lid + i];
 
         barrier(CLK_LOCAL_MEM_FENCE);
     }
 
-    if(id == 0) {
-        int len =  get_global_size(0);
+    //Calculate minimum sequentially
+    if (lid == 0) {
+        atomic_add(&B[0], local_std[lid]);
+    }
+}
 
-        for(int i = N; i < len; i+=N){
-            B[id] += B[i];
-        };
+__kernel void std_manual_INT(__global const int *A, __global int *B, float mean_f, __local int *local_std) {
+    //Get ID, local ID and width of local work group
+    int id = get_global_id(0);
+    int lid = get_local_id(0);
+    int N = get_local_size(0);
+    int mean = (int) mean_f;
 
-        B[0] = sqrt((float)B[id]/(len));
+    local_std[lid] = square_int(A[id] - mean);
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    for (int i = 1; i < N; i *= 2) {
+        if (lid % (i * 2) == 0 && lid + i < N)
+            local_std[lid] += local_std[lid + i];
+
+        barrier(CLK_LOCAL_MEM_FENCE);
+    }
+
+
+    //Calculate minimum sequentially
+    if (lid == 0) {
+        B[get_group_id(0)] = local_std[lid];
+
+        barrier(CLK_LOCAL_MEM_FENCE);
+        if(id==0) {
+
+            int group_count = get_num_groups(0);
+            for(int i = 1; i < group_count; ++i){
+                B[id] += B[i];
+            }
+            printf("%d", B[id]);
+            B[id] = sqrt((float)B[id]/ get_global_size(0));
+        }
+
     }
 }
 
