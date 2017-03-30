@@ -3,6 +3,7 @@
 
 #include "WeatherAnalysis.hpp"
 #include "Utils.hpp"
+#include <algorithm>
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "TemplateArgumentsIssues"
@@ -132,7 +133,7 @@ template<class T>
 void WeatherAnalysis<T>::SetKernelWorkGroupRecursion(bool should_recurse) {
     if (this->type == "FLOAT") {
         this->kernel_work_group_recursion = should_recurse;
-    } else {
+    } else if (should_recurse){
         std::cout << "No supported kernels for workgroup recursion for type " << this->type << std::endl;
     }
 };
@@ -175,6 +176,7 @@ void WeatherAnalysis<T>::WriteDataToDevice() {
     unsigned int work_group_size = (this->data.size() / this->local_size) * sizeof(T);
 
     //Allocate device buffers
+    ///TODO:CHANGE TO CL MEM READ ONLY
     this->data_buffer = cl::Buffer(this->context, CL_MEM_READ_ONLY, data_size);
     //Copy data_buffer data to device
     this->queue.enqueueWriteBuffer(this->data_buffer, CL_TRUE, 0, data_size, &this->data[0]);
@@ -348,22 +350,30 @@ void WeatherAnalysis<T>::Sort() {
     cl::Kernel sort_kernel = cl::Kernel(this->program, kernel_ID.c_str());
     sort_kernel.setArg(0, this->data_buffer);
     sort_kernel.setArg(1, this->sort_buffer);
-
-    //Allocate local memory with number of local elements * size
     sort_kernel.setArg(2, cl::Local(this->local_size * sizeof(T)));
-
-    this->EnqueueKernel(sort_kernel, kernel_ID);
+    sort_kernel.setArg(3, false);
 
     //Create vector to read final values
-    std::vector<T> output(this->data.size(), 0);
+    std::vector<T> output(this->data.size(), -100);
+    this->EnqueueKernel(sort_kernel, kernel_ID);
+    sort_kernel.setArg(0, this->sort_buffer);
 
-    //5.3 Copy the result from device to host
-    this->queue.enqueueReadBuffer(this->sort_buffer, CL_TRUE, 0, this->data.size() * sizeof(T), &output[0]);
+    bool merge = true;
+    do {
+        sort_kernel.setArg(3, merge);
+        this->EnqueueKernel(sort_kernel, kernel_ID);
 
-    this->sorted_data = output;
-    this->data = this->sorted_data;
-    PrintNonZeros(this->sorted_data);
-    std::cout << this->sorted_data.at(0);
+        merge = !merge;
+
+        this->queue.enqueueReadBuffer(this->sort_buffer, CL_TRUE, 0, this->data.size() * sizeof(T), &output[0]);
+        this->queue.finish();
+    } while (!std::is_sorted(output.begin(), output.end()));
+
+    PrintNonZeros(output);
+    std::cout << '\n';
+    std::cout << output.back() << std::endl;
+
+    std::cout << std::endl;
 };
 
 template<class T>

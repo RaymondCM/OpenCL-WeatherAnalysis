@@ -15,7 +15,7 @@ int main(int argc, char **argv) {
     root = PROJECT_ROOT;
 #endif
 
-    std::string file_path = root + "/data/temp_lincolnshire.txt";
+    std::string file_path = root + "/data/temp_lincolnshire_short.txt";
     std::string kernels_path = root + "/opencl/kernels.cl";
 
     typedef int T;
@@ -26,21 +26,21 @@ int main(int argc, char **argv) {
     world.CmdParser(argc, argv);
     world.Initialise(kernels_path);
 
-    world.Configure(32, 0);
+    world.Configure(16, 0);
     world.SetVerboseKernel(false);
     world.UsePreferredKernelOptions(false);
-    world.PrintKernelProfilingData(true);
+    world.PrintKernelProfilingData(false);
     world.SetKernelWorkGroupRecursion(false);
 
     world.PadData();
     world.PrintBaselineResults();
     world.WriteDataToDevice();
 
-    world.Min();
-    world.Max();
+    //world.Min();
+    //world.Max();
     //world.Sum();
-    world.Average();
-    world.StdDeviation();
+    //world.Average();
+    //world.StdDeviation();
     world.Sort();
 
     world.PrintResults();
