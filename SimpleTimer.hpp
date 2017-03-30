@@ -1,8 +1,12 @@
+//Raymond Kirk - 14474219@students.lincoln.ac.uk
+
 #ifndef ASSIGNMENTONE_SIMPLETIMER_H
 #define ASSIGNMENTONE_SIMPLETIMER_H
 
 #include <chrono>
 
+//Timer class to accuratly record benchmarks for host code.
+// Uses matlab style syntax for readability.
 class SimpleTimer {
 public:
     void Tic(){
