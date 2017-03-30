@@ -46,7 +46,7 @@ namespace Parse {
         SimpleTimer t;
 		t.Tic();
 		Parse::FileEOL(file_path, destination);
-        std::cout << "File Parsed in " << t.Toc() / 1000000 << "ms" << std::endl;
+        std::cout << "File Parsed in " << t.Toc() / 100000 << "ms" << std::endl;
 	};
 
 	template<typename T>

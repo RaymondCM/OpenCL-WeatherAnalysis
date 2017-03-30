@@ -18,9 +18,32 @@ using namespace std;
 
 template<typename T>
 void PrintNonZeros(std::vector<T>& v){
+	int c = 0;
 	for(auto const& val : v) {
-		if(val != 0)
+		//if(val != 0)
+		std::cout << val << ", ";
+		c++;
+	}
+	std::cout << "COUNT: "<< c << std::endl;
+}
+
+template<typename T>
+void PrintSortedVector(std::vector<T>& v, int local_size, int rows){
+	int c = 0;
+	int r = 0;
+	for(auto const& val : v) {
+		if(c == local_size) {
+			std::cout << std::endl;
+			c = 0;
+			if(rows > 0)
+				if(++r == rows)
+					break;
+		}
+
+		if(val != 0) {
 			std::cout << val << ", ";
+			c++;
+		}
 	}
 	std::cout << std::endl;
 }
