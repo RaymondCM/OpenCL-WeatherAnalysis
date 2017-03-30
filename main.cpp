@@ -36,11 +36,11 @@ int main(int argc, char **argv) {
     world.PrintBaselineResults();
     world.WriteDataToDevice();
 
-    //world.Min();
-    //world.Max();
-    //world.Sum();
-    //world.Average();
-    //world.StdDeviation();
+    world.Min();
+    world.Max();
+    world.Sum();
+    world.Average();
+    world.StdDeviation();
     world.Sort();
 
     world.PrintResults();

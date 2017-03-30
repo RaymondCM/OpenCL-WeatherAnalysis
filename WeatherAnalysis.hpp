@@ -40,7 +40,7 @@ public:
 private:
 	int platform_ID = 0, device_ID = 0;
 	int local_size = 1024;
-	T neutral_value = 0, minimum = 0, maximum = 0, sum = 0;
+	T neutral_value = 0, minimum = 0, maximum = 0, sum = 0, median = 0, first_quantile = 0, third_quantile = 0;
 	float average = 0, std_deviation = 0;
     unsigned int pad_right = 0;
 	bool verbose = false, use_preferred = false, print_profiling_data = false, kernel_work_group_recursion = false;
