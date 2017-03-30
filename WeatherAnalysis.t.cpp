@@ -96,7 +96,10 @@ void WeatherAnalysis<T>::PrintResults() {
     results << std::fixed << "Max: " << this->maximum << "\n\t";
     results << std::fixed << "Sum: " << this->sum << "\n\t";
     results << std::fixed << "Average: " << this->average << "\n\t";
-    results << std::fixed << "Std Deviation: " << this->std_deviation << std::endl;
+	results << std::fixed << "Std Deviation: " << this->std_deviation << "\n\t";
+	results << std::fixed << "Median: " << this->median << "\n\t";
+	results << std::fixed << "First Quartile: " << this->first_quantile << "\n\t";
+    results << std::fixed << "Third Quartile: " << this->third_quantile << std::endl;
     std::cout << results.str();
 };
 
@@ -345,35 +348,34 @@ void WeatherAnalysis<T>::StdDeviation() {
 template<class T>
 void WeatherAnalysis<T>::Sort() {
     std::string kernel_ID(this->GetKernelName("sort"), false);
+	int merge = 0;
 
     //Configure kernels and queue them for execution
     cl::Kernel sort_kernel = cl::Kernel(this->program, kernel_ID.c_str());
     sort_kernel.setArg(0, this->data_buffer);
     sort_kernel.setArg(1, this->sort_buffer);
     sort_kernel.setArg(2, cl::Local(this->local_size * sizeof(T)));
-    sort_kernel.setArg(3, false);
+    sort_kernel.setArg(3, merge);
 
     //Create vector to read final values
     std::vector<T> output(this->data.size(), -100);
     this->EnqueueKernel(sort_kernel, kernel_ID);
     sort_kernel.setArg(0, this->sort_buffer);
 
-    bool merge = true;
     do {
-        sort_kernel.setArg(3, merge);
-        this->EnqueueKernel(sort_kernel, kernel_ID);
+		merge = !merge;
+		sort_kernel.setArg(3, merge);
 
-        merge = !merge;
+		this->EnqueueKernel(sort_kernel, kernel_ID);
 
         this->queue.enqueueReadBuffer(this->sort_buffer, CL_TRUE, 0, this->data.size() * sizeof(T), &output[0]);
         this->queue.finish();
     } while (!std::is_sorted(output.begin(), output.end()));
 
-    PrintNonZeros(output);
-    std::cout << '\n';
-    std::cout << output.back() << std::endl;
-
-    std::cout << std::endl;
+	this->sorted_data = output;
+	this->median = this->sorted_data[round(output.size() * 0.5)];
+	this->first_quantile = this->sorted_data[round(output.size() * 0.25)];
+	this->third_quantile = this->sorted_data[round(output.size() * 0.75)];
 };
 
 template<class T>
