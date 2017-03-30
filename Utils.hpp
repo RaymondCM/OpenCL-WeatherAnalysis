@@ -1,3 +1,5 @@
+//Raymond Kirk - 14474219@students.lincoln.ac.uk
+
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "TemplateArgumentsIssues"
 #ifndef _UTILS_H_
@@ -16,17 +18,19 @@
 
 using namespace std;
 
+//Print All vector values that arent zero
 template<typename T>
 void PrintNonZeros(std::vector<T>& v){
 	int c = 0;
 	for(auto const& val : v) {
-		//if(val != 0)
-		std::cout << val << ", ";
+		if(val != 0)
+			std::cout << val << ", ";
 		c++;
 	}
 	std::cout << "COUNT: "<< c << std::endl;
 }
 
+//Print X rows of a vector, use ful when debugging
 template<typename T>
 void PrintSortedVector(std::vector<T>& v, int local_size, int rows){
 	int c = 0;
@@ -66,6 +70,7 @@ void print_help() {
 	std::cerr << "  -h : print this message" << std::endl;
 }
 
+//Print preffered kernel options.
 void PrintPreferredWorkGroupSize(cl::Context& context, const cl::Kernel& k, unsigned int data_size, unsigned int local_size) {
 	cl::Device device = context.getInfo<CL_CONTEXT_DEVICES>()[0];
 	size_t preferred = k.getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(device);
